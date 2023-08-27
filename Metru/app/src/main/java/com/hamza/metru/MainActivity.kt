@@ -18,17 +18,15 @@ import com.hamza.metru.databinding.ActivityMainBinding
 import com.hamza.metru.viewModels.VideoViewModel
 import dagger.hilt.android.AndroidEntryPoint
 import androidx.activity.viewModels
+import com.hamza.metru.utils.RecordingTimer
 
 @AndroidEntryPoint
 class MainActivity : AppCompatActivity() {
     private lateinit var viewBinding: ActivityMainBinding
-    private var videoCapture: VideoCapture<Recorder>? = null
-    private var recording: Recording? = null
-    private var isRecording: Boolean = false
     private var isPlaying: Boolean = false
     private lateinit var cameraExecutor: ExecutorService
-
     private val viewModel: VideoViewModel by viewModels()
+    private lateinit var videoRecordingTimer: RecordingTimer
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -37,21 +35,21 @@ class MainActivity : AppCompatActivity() {
 
         // Request camera permissions
         if (allPermissionsGranted()) {
-            viewModel.startCamera(viewBinding.pvCamera!!.surfaceProvider)
+            viewModel.startCamera(this, viewBinding.pvCamera!!.surfaceProvider)
         } else {
             ActivityCompat.requestPermissions(
                 this, REQUIRED_PERMISSIONS, REQUEST_CODE_PERMISSIONS)
         }
         viewBinding.btnStartStop!!.setOnClickListener {
-            if (isRecording){
+            if (viewModel.isRecording){
                 viewModel.stopRecording()
                 viewBinding.ivMask!!.visibility = View.VISIBLE
                 viewBinding.tvVideoTimer!!.visibility = View.GONE
-                isRecording = false
-
             }
             else{
-                setupStartRecording()
+                if (!viewModel.isStartTimer){
+                    setupStartRecording()
+                }
             }
         }
         viewBinding.btnPlayPause!!.setOnClickListener {
@@ -67,6 +65,16 @@ class MainActivity : AppCompatActivity() {
             isPlaying = false
         }
         cameraExecutor = Executors.newSingleThreadExecutor()
+
+        videoRecordingTimer = RecordingTimer(30000L, 1000L, false,
+            {
+                viewModel.stopRecording()
+            },
+            {
+                val seconds= (30 - (it / 1000)).toString()
+                viewBinding.tvVideoTimer?.text = "00:$seconds"
+            }
+        )
     }
 
     private fun setupStartRecording(){
@@ -83,7 +91,6 @@ class MainActivity : AppCompatActivity() {
                 viewBinding.ivMask!!.visibility = View.GONE
                 viewBinding.tvBreath!!.visibility = View.GONE
                 viewBinding.tvStartTimer!!.visibility = View.GONE
-                isRecording = true
                 startRecording()
             }
         }
@@ -91,18 +98,22 @@ class MainActivity : AppCompatActivity() {
 
     private fun startRecording() {
         viewBinding.btnStartStop!!.isEnabled = false
-        viewModel.startRecording {
-            if (it){
+        viewBinding.tvVideoTimer?.text = "00:00"
+        viewModel.startRecording { recording, url ->
+            if (recording){
                 viewBinding.btnStartStop!!.apply {
                     text = getString(R.string.stop)
                     isEnabled = true
                 }
+                videoRecordingTimer.start()
             }
             else{
                 viewBinding.btnStartStop!!.apply {
                     text = getString(R.string.start)
                     isEnabled = true
                 }
+                showVideoView(url)
+                videoRecordingTimer.stop()
             }
         }
     }
@@ -116,6 +127,19 @@ class MainActivity : AppCompatActivity() {
         viewBinding.vvVideo!!.stopPlayback()
         viewBinding.btnPlayPause!!.text = getString(R.string.play)
         isPlaying = false
+    }
+
+    private fun showVideoView(url: String){
+        viewBinding.vvVideo!!.visibility = View.VISIBLE
+        viewBinding.pvCamera!!.visibility = View.INVISIBLE
+        viewBinding.tvVideoTimer!!.visibility = View.INVISIBLE
+        viewBinding.tvBreath!!.visibility = View.INVISIBLE
+        viewBinding.tvStartTimer!!.visibility = View.INVISIBLE
+        viewBinding.ivMask!!.visibility = View.INVISIBLE
+
+        viewBinding.vvVideo!!.setVideoPath(url)
+        viewBinding.vvVideo!!.seekTo( 1 )
+
     }
 
     private fun playVideo(){
@@ -146,7 +170,7 @@ class MainActivity : AppCompatActivity() {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
         if (requestCode == REQUEST_CODE_PERMISSIONS) {
             if (allPermissionsGranted()) {
-                viewModel.startCamera(viewBinding.pvCamera!!.surfaceProvider)
+                viewModel.startCamera(this, viewBinding.pvCamera!!.surfaceProvider)
             } else {
                 Toast.makeText(this, getString(R.string.permission_msg), Toast.LENGTH_SHORT).show()
                 finish()

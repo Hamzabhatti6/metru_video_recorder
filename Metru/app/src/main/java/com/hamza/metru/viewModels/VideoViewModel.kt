@@ -6,9 +6,6 @@ import android.content.Context
 import android.os.Build
 import android.os.CountDownTimer
 import android.provider.MediaStore
-import android.util.Log
-import android.view.Surface
-import android.view.View
 import android.widget.Toast
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.Preview
@@ -16,28 +13,27 @@ import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.video.*
 import androidx.core.content.ContextCompat
 import androidx.core.content.PermissionChecker
+import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.hamza.metru.MainActivity
 import com.hamza.metru.R
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.*
-import java.util.concurrent.ExecutorService
 import javax.inject.Inject
 
 @HiltViewModel
-class VideoViewModel @Inject constructor(@ApplicationContext val application: Context ) : ViewModel() {
+class VideoViewModel @Inject constructor(@ApplicationContext val application: Context) : ViewModel() {
     private var videoCapture: VideoCapture<Recorder>? = null
     private var recording: Recording? = null
-    private var isRecording: Boolean = false
-    private var isPlaying: Boolean = false
-    private lateinit var cameraExecutor: ExecutorService
+    var isRecording: Boolean = false
+    var isStartTimer: Boolean = false
     val FILENAME_FORMAT = "yyyy-MM-dd-HH-mm-ss-SSS"
 
     fun setupStartRecording(callback:  (Boolean,String) -> Unit){
+        isStartTimer = true
         viewModelScope.launch {
             try {
                 val timer = object: CountDownTimer(5000, 1000) {
@@ -47,7 +43,7 @@ class VideoViewModel @Inject constructor(@ApplicationContext val application: Co
 
                     override fun onFinish() {
                         callback.invoke(false,"0")
-                        isRecording = true
+                        isStartTimer = false
                     }
                 }
                 timer.start()
@@ -57,7 +53,7 @@ class VideoViewModel @Inject constructor(@ApplicationContext val application: Co
         }
     }
 
-    fun startCamera(surface: Preview.SurfaceProvider) {
+    fun startCamera(owner: LifecycleOwner, surface: Preview.SurfaceProvider) {
 
         val cameraProviderFuture = ProcessCameraProvider.getInstance(application)
 
@@ -90,7 +86,7 @@ class VideoViewModel @Inject constructor(@ApplicationContext val application: Co
 
                 // Bind use cases to camera
 
-                cameraProvider.bindToLifecycle(this, cameraSelector, preview,videoCapture)
+                cameraProvider.bindToLifecycle(owner, cameraSelector, preview,videoCapture)
 
             } catch(exc: Exception) {
             //    Log.e(MainActivity.TAG, "Use case binding failed", exc)
@@ -99,7 +95,8 @@ class VideoViewModel @Inject constructor(@ApplicationContext val application: Co
         }, ContextCompat.getMainExecutor(application))
     }
 
-     fun startRecording(callback: (Boolean) -> Unit) {
+     fun startRecording(callback: (Boolean, String) -> Unit) {
+         isRecording = true
         val videoCapture = this.videoCapture ?: return
         // create and start a new recording session
         val name = SimpleDateFormat(FILENAME_FORMAT, Locale.US)
@@ -130,18 +127,18 @@ class VideoViewModel @Inject constructor(@ApplicationContext val application: Co
             .start(ContextCompat.getMainExecutor(application)) { recordEvent ->
                 when(recordEvent) {
                     is VideoRecordEvent.Start -> {
-                        callback.invoke(true)
+                        callback.invoke(true, "")
                     }
                     is VideoRecordEvent.Finalize -> {
                         if (!recordEvent.hasError()) {
                             Toast.makeText(application, application.getString(R.string.saved), Toast.LENGTH_SHORT).show()
-                         //   showVideoView(recordEvent.outputResults.outputUri.toString())
-
+                            callback.invoke(false, recordEvent.outputResults.outputUri.toString())
                         } else {
                             recording?.close()
                             recording = null
                         }
-                        callback.invoke(false)
+
+                        isRecording = false
                     }
                 }
             }
