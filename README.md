@@ -3,25 +3,25 @@
 
 # Video recording feature:
 
-Record 30 seconds video
-Auto-stop video recording after 30 sec
-Stop video recording anytime with the stop button
-Play/Pause the recorded video once finished recording
-Used CameraX, ExecutorService, ProcessCameraProvider
+Record 30 seconds video__
+Auto-stop video recording after 30 sec__
+Stop video recording anytime with the stop button__
+Play/Pause the recorded video once finished recording__
+Used CameraX, ExecutorService, ProcessCameraProvider__
 
 # Android components:
 
-Used CameraX
-ExecutorService
-ProcessCameraProvider
+Used CameraX__
+ExecutorService__
+ProcessCameraProvider__
 
 # Implementations:
 
-Hilt
-MVVM
-Enums
-Service
-kotlinx.coroutines
-coroutines.flow
-viewModelScope
-HiltViewModel
+Hilt__
+MVVM__
+Enums__
+Service__
+kotlinx.coroutines__
+coroutines.flow__
+viewModelScope__
+HiltViewModel__
