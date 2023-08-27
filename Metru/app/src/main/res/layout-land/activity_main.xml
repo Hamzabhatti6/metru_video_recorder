@@ -87,7 +87,8 @@
         app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toEndOf="@+id/pv_camera" />
+        app:layout_constraintStart_toEndOf="@+id/pv_camera"
+        />
 
     <androidx.appcompat.widget.AppCompatTextView
         android:id="@+id/tv_heading"

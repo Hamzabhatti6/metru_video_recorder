@@ -3,6 +3,7 @@
 
 
     <dimen name="heading">30dp</dimen>
+    <dimen name="min_heading">20dp</dimen>
     <dimen name="button">12dp</dimen>
     <dimen name="text">14dp</dimen>
     <dimen name="text_bold">14dp</dimen>
